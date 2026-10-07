@@ -1547,7 +1547,7 @@ export function ProfileEditor({ variant = "verified" }: { variant?: ProfileVaria
                 </AccordionContent>
               </AccordionItem>
 
-              {!verified && (
+              {!verified && !alias && (
                 <AccordionItem
                   value="verification"
                   className="rounded-2xl border border-border bg-card px-4 sm:px-5"

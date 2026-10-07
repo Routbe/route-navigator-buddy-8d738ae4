@@ -865,13 +865,17 @@ print(create_qr())`,
         </TabsContent>
 
         <TabsContent value="oauth" className="mt-6">
-          {user ? (
-            <OAuthConsole />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Meld je aan om apps voor "Login met ROUT" te beheren.
-            </p>
-          )}
+          <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-6">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-xl text-foreground">Login met ROUT</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Apps, sleutels, redirects en beveiliging beheer je in de Developer Console.
+              </p>
+            </div>
+            <Button asChild>
+              <a href="/console/apps">Open Console →</a>
+            </Button>
+          </section>
         </TabsContent>
 
         <TabsContent value="quickstart" className="mt-6 space-y-5">

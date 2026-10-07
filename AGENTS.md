@@ -16,3 +16,4 @@
 - Login ON rout.be (Better Auth, `better-auth.server.ts`) and login VIA rout.be (OIDC provider, `src/lib/oauth/*`) never share config; provider env vars use the `ROUT_PROVIDER_*` prefix. Why: prevents one role breaking the other.
 - Sign-in tiles are always rendered; unconfigured providers show a notice instead of sending a request. Why: missing keys must never hide options.
 - Public profile visibility (`publicProfile`, `timelineVisible` in `display_prefs`) is enforced server-side in the public profile/timeline server functions. Why: client checks alone leak data.
+- Influencer/business verification hands out names through the `approved_handles` whitelist (`db/45`); users claim exactly one via `claimApprovedHandle`. Why: the admin approves names, never types them for the user.
