@@ -15,6 +15,7 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,
+    "incremental": false,
     // Bewust géén incrementele cache: tsgo en tsc schrijven allebei naar
     // hetzelfde .tsbuildinfo, en een cache van de ene compiler laat de andere
     // vastlopen (de preview-typecheck liep daardoor in een time-out). Een

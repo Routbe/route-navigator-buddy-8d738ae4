@@ -793,7 +793,7 @@ export function ProfileEditor({ variant = "verified" }: { variant?: ProfileVaria
                     <h2 className="px-1 text-lg font-medium">Referrals &amp; Rewards</h2>
                     <p className="px-1 text-sm text-muted-foreground">
                       Nodig vrienden uit met je persoonlijke link. 3 vrienden = 50% korting, 3
-                      geverifieerde vrienden = gratis verificatie, 10 vrienden = gratis verificatie
+                      geverifieerde vrienden = verificatie zonder kosten, 10 vrienden = verificatie zonder kosten
                       én de Epic badge “The Influencer”.
                     </p>
                     <ReferralPanel />
