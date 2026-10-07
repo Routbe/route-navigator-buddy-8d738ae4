@@ -23,7 +23,13 @@ export const requestBusinessVerification = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => businessSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { submitBusinessRequest } = await import("./verification-requests.server");
-    return submitBusinessRequest(context.userId, data);
+    const res = await submitBusinessRequest(context.userId, data);
+    const id = (res as { request?: { id?: unknown } | null }).request?.id;
+    if (res.ok && typeof id === "string") {
+      const { notifyIntake } = await import("./approved-handles.server");
+      await notifyIntake(context.userId, "business", data.companyName, id);
+    }
+    return res;
   });
 
 export const getMyBusinessRequest = createServerFn({ method: "GET" })
@@ -44,7 +50,13 @@ export const requestInfluencerVerification = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => influencerSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { submitInfluencerRequest } = await import("./verification-requests.server");
-    return submitInfluencerRequest(context.userId, data);
+    const res = await submitInfluencerRequest(context.userId, data);
+    const id = res.ok ? (res.request as { id?: unknown } | null)?.id : null;
+    if (res.ok && typeof id === "string") {
+      const { notifyIntake } = await import("./approved-handles.server");
+      await notifyIntake(context.userId, "influencer", data.handleChoices[0] ?? "influencer", id);
+    }
+    return res;
   });
 
 export const getMyInfluencerRequest = createServerFn({ method: "GET" })
@@ -96,7 +108,19 @@ export const adminReviewBusinessRequest = createServerFn({ method: "POST" })
     );
     return data.approve
       ? approveBusinessRequest(data.requestId, context.userId)
-      : rejectBusinessRequest(data.requestId, context.userId, data.note ?? null);
+      : rejectBusinessRequest(data.requestId, context.userId, data.note ?? null).then(async (r) => {
+          const { sql } = await import("./neon");
+          const table: string = "business_verifications";
+          const rows = (table === "business_verifications"
+            ? await sql`select user_id from public.business_verifications where id = ${data.requestId}`
+            : await sql`select user_id from public.influencer_requests where id = ${data.requestId}`) as Record<string, unknown>[];
+          const uid = rows[0]?.["user_id"];
+          if (typeof uid === "string") {
+            const { notifyRejected } = await import("./approved-handles.server");
+            await notifyRejected(uid);
+          }
+          return r;
+        });
   });
 
 export const adminReviewInfluencerRequest = createServerFn({ method: "POST" })
@@ -110,5 +134,60 @@ export const adminReviewInfluencerRequest = createServerFn({ method: "POST" })
     );
     return data.approve
       ? approveInfluencerRequest(data.requestId, context.userId, data.handle ?? null)
-      : rejectInfluencerRequest(data.requestId, context.userId, data.note ?? null);
+      : rejectInfluencerRequest(data.requestId, context.userId, data.note ?? null).then(async (r) => {
+          const { sql } = await import("./neon");
+          const table: string = "influencer_requests";
+          const rows = (table === "business_verifications"
+            ? await sql`select user_id from public.business_verifications where id = ${data.requestId}`
+            : await sql`select user_id from public.influencer_requests where id = ${data.requestId}`) as Record<string, unknown>[];
+          const uid = rows[0]?.["user_id"];
+          if (typeof uid === "string") {
+            const { notifyRejected } = await import("./approved-handles.server");
+            await notifyRejected(uid);
+          }
+          return r;
+        });
+  });
+
+/* ───────────────────── whitelist, claim en persoon ───────────────────── */
+
+export const adminApproveWithWhitelist = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      kind: z.enum(["influencer", "business"]),
+      requestId: z.string().uuid(),
+      handles: z.array(z.string().trim().min(1).max(60)).max(8),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdminRole } = await import("./admin.server");
+    await assertAdminRole(context.userId);
+    const { approveWithWhitelist } = await import("./approved-handles.server");
+    return approveWithWhitelist(data.kind, data.requestId, context.userId, data.handles);
+  });
+
+export const getMyApprovedHandles = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { myApprovedHandles } = await import("./approved-handles.server");
+    return myApprovedHandles(context.userId);
+  });
+
+export const claimApprovedHandle = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: unknown) => z.object({ handle: z.string().trim().min(1).max(60) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { claimHandle } = await import("./approved-handles.server");
+    return claimHandle(context.userId, data.handle);
+  });
+
+export const adminFindAccount = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: unknown) => z.object({ query: z.string().trim().min(2).max(160) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { assertAdminRole } = await import("./admin.server");
+    await assertAdminRole(context.userId);
+    const { findAccount } = await import("./approved-handles.server");
+    return findAccount(data.query);
   });

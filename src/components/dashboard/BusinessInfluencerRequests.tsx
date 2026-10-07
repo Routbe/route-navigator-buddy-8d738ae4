@@ -19,6 +19,8 @@ import {
   getMyInfluencerRequest,
   requestBusinessVerification,
   requestInfluencerVerification,
+  getMyApprovedHandles,
+  claimApprovedHandle,
 } from "@/lib/verification-requests.functions";
 
 /**
@@ -129,6 +131,8 @@ export function BusinessInfluencerRequests() {
   };
 
   return (
+    <>
+    <ClaimApprovedHandle />
     <div className="mt-6 flex flex-wrap items-center gap-3 border-t pt-4">
       <Dialog open={openBusiness} onOpenChange={setOpenBusiness}>
         <DialogTrigger asChild>
@@ -227,6 +231,53 @@ export function BusinessInfluencerRequests() {
         </DialogContent>
       </Dialog>
       {badge(influencer)}
+    </div>
+    </>
+  );
+}
+
+/** Dropdown met uitsluitend de door de beheerder goedgekeurde namen. */
+function ClaimApprovedHandle() {
+  const list = useServerFn(getMyApprovedHandles);
+  const claim = useServerFn(claimApprovedHandle);
+  const [entries, setEntries] = useState<{ handle: string; status: string }[]>([]);
+  const [choice, setChoice] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    list().then(setEntries).catch(() => setEntries([]));
+  }, [list]);
+  const claimed = entries.find((e) => e.status === "claimed");
+  const open = entries.filter((e) => e.status === "approved");
+  if (claimed) {
+    return <p className="mt-6 text-sm text-muted-foreground">Je verificatie is compleet: rout.be/{claimed.handle}</p>;
+  }
+  if (open.length === 0) return null;
+  return (
+    <div className="mt-6 space-y-3 rounded-xl border border-border p-4">
+      <p className="text-sm font-medium">Kies je definitieve naam</p>
+      <select
+        aria-label="Goedgekeurde naam"
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        value={choice}
+        onChange={(e) => setChoice(e.target.value)}
+      >
+        <option value="">Kies een naam…</option>
+        {open.map((e) => <option key={e.handle} value={e.handle}>rout.be/{e.handle}</option>)}
+      </select>
+      <Button
+        size="sm"
+        disabled={!choice || busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const res = await claim({ data: { handle: choice } });
+            if (!res.ok) toast.error(res.reason);
+            else { toast.success(`rout.be/${res.handle} is van jou`); setEntries(await list()); }
+          } catch { toast.error("Claimen mislukt."); } finally { setBusy(false); }
+        }}
+      >
+        Naam claimen
+      </Button>
     </div>
   );
 }

@@ -82,3 +82,31 @@ does not change `users.id`, so the `sub` stays the same.
 - **Build:** set `NITRO_PRESET=vercel` in Vercel → Environment Variables. The default target is
   an edge worker.
 - Set every variable for Production **and** Preview, then redeploy.
+
+## Developer Console — final UI structure
+
+```text
+/console/apps                       App overview: grid of cards, "Nieuwe app", delete with confirmation
+/console/apps/$appId                -> redirects to credentials
+  credentials                       Client ID (copy), rotate secret (shown once), discovery URL
+  branding                          Name, logo URL (live preview), website, privacy, terms
+  redirects                         Callback URLs: add / remove / validate (https, http only for localhost, no #fragment)
+  scopes                            openid (required), profile, email + PKCE authorize snippet
+  security                          Flow: Seamless | Strict, Rich Identity toggle
+```
+The Developer Hub "Login met ROUT" tab is a single card linking to `/console/apps`.
+
+## OIDC parameters on /oauth/authorize
+
+| Parameter | Effect |
+|---|---|
+| `response_type=code` | Authorization code flow (only supported type) |
+| `client_id`, `redirect_uri` | Must match a registered app and an exact registered redirect |
+| `scope` | `openid` required; `profile`, `email` optional |
+| `code_challenge` + `code_challenge_method=S256` | PKCE, mandatory |
+| `state`, `nonce` | Echoed back / embedded in the ID token |
+| `prompt=login` | Forces the 6-digit step-up code |
+| `max_age` | Any value forces the step-up code |
+| `acr_values=urn:rout:acr:strict` | Forces the step-up code; the ID token then carries `acr` |
+
+Step-up is also required whenever the app's `flow_preference` is `strict`. Rich Identity (public activity) is shared only when the app enabled it **and** the user ticked the opt-in on the consent screen. The rules live in `src/lib/oauth/step-up.ts` and are covered by `step-up.test.ts`.

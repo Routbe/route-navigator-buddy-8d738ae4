@@ -1306,7 +1306,7 @@ export function VerificationPanel() {
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isFreeCheckout
-                  ? "Claim Early Believer gratis"
+                  ? "Verificatie activeren"
                   : `Kaart · Apple Pay — ${euro(totalTodayCents)}`}
               </Button>
             ) : method === "bunq" ? (
@@ -1325,7 +1325,7 @@ export function VerificationPanel() {
                 {showBunq
                   ? t("pay.cta.hide")
                   : isFreeCheckout
-                    ? "Claim Early Believer gratis"
+                    ? "Verificatie activeren"
                     : t("pay.bunq.cta", { total: euro(totalTodayCents) })}
               </Button>
             ) : (
@@ -1344,7 +1344,7 @@ export function VerificationPanel() {
                 {showSepa
                   ? t("pay.cta.hide")
                   : isFreeCheckout
-                    ? "Claim Early Believer gratis"
+                    ? "Verificatie activeren"
                     : `Bank Transfer — ${euro(totalTodayCents)}`}
               </Button>
             )}
@@ -1429,7 +1429,7 @@ export function VerificationPanel() {
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isFreeCheckout
-                      ? "Claim Early Believer gratis"
+                      ? "Verificatie activeren"
                       : t("checkout.legal_name_modal.button_continue")}
                   </Button>
                 </DialogFooter>
