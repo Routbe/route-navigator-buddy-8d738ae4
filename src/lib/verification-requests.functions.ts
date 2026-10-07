@@ -7,7 +7,7 @@ import { requireAuth } from "@/lib/auth/middleware";
  * De aanvraag van een lid en de wachtrij voor beheerders.
  */
 
-const businessSchema = z.object({
+const businessSchema = z.strictObject({
   companyName: z.string().min(2).max(160),
   legalForm: z.string().max(80).nullable().optional(),
   vatNumber: z.string().min(6).max(20),
@@ -22,6 +22,10 @@ export const requestBusinessVerification = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data: unknown) => businessSchema.parse(data))
   .handler(async ({ data, context }) => {
+    const { hasBirthdate } = await import("./birthdate.server");
+    if (!(await hasBirthdate(context.userId))) {
+      return { ok: false as const, reason: "birthdate_required" };
+    }
     const { submitBusinessRequest } = await import("./verification-requests.server");
     const res = await submitBusinessRequest(context.userId, data);
     const id = (res as { request?: { id?: unknown } | null }).request?.id;
@@ -39,7 +43,7 @@ export const getMyBusinessRequest = createServerFn({ method: "GET" })
     return myBusinessRequest(context.userId);
   });
 
-const influencerSchema = z.object({
+const influencerSchema = z.strictObject({
   handleChoices: z.array(z.string().max(40)).min(1).max(4),
   socialLinks: z.array(z.string().max(200)).min(1).max(8),
   motivation: z.string().max(600).nullable().optional(),
@@ -49,6 +53,10 @@ export const requestInfluencerVerification = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data: unknown) => influencerSchema.parse(data))
   .handler(async ({ data, context }) => {
+    const { hasBirthdate } = await import("./birthdate.server");
+    if (!(await hasBirthdate(context.userId))) {
+      return { ok: false as const, reason: "birthdate_required" };
+    }
     const { submitInfluencerRequest } = await import("./verification-requests.server");
     const res = await submitInfluencerRequest(context.userId, data);
     const id = res.ok ? (res.request as { id?: unknown } | null)?.id : null;

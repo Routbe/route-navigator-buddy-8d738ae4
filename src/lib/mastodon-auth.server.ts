@@ -316,7 +316,7 @@ async function exchangeCode(state: StatePayload, code: string): Promise<string> 
  * into the httpOnly session cookie, exactly like password sign-in does.
  */
 async function mintNeonSession(instance: string, account: Account) {
-  const { findUserByEmail, createUser, updateUserMetadata } = await import("./auth/users.server");
+  const { findUserByEmail, updateUserMetadata } = await import("./auth/users.server");
 
   const email = fediverseEmail(account.username, instance);
   const handle = fediverseHandle(account.username, instance);
@@ -331,11 +331,25 @@ async function mintNeonSession(instance: string, account: Account) {
   };
 
   try {
-    const existing = await findUserByEmail(email);
-    const userId = existing
-      ? String(existing["id"])
-      : (await createUser({ email, metadata, emailConfirmed: true })).id;
-    if (existing) await updateUserMetadata(userId, metadata);
+    // 1. Al gekoppeld via een eerder bevestigd e-mailadres → meteen binnen.
+    const { sql } = await import("./neon");
+    const linked = (await sql`
+      select user_id from public.user_identities
+       where provider = 'mastodon' and provider_account_id = ${handle}
+       limit 1`) as Record<string, unknown>[];
+    let userId = linked[0]?.["user_id"] ? String(linked[0]["user_id"]) : null;
+    // 2. Bestaand account van vóór de e-mailstap (afgeleid adres, enkel
+    //    bereikbaar via dit geverifieerde Mastodon-account).
+    if (!userId) {
+      const legacy = await findUserByEmail(email);
+      if (legacy) userId = String(legacy["id"]);
+    }
+    // 3. Nieuw: eerst een e-mailadres + code — nooit stil een account maken.
+    if (!userId) {
+      mastodonLog("info", "email_step_required", { instance, handle });
+      return { userId: null, handle, displayName: account.displayName };
+    }
+    await updateUserMetadata(userId, metadata);
     mastodonLog("info", "session_minted", { instance, handle });
     return { userId, handle, displayName: account.displayName };
   } catch (error) {

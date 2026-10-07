@@ -23,6 +23,8 @@ export interface ProfileBlock {
   thumbnailUrl?: string;
   /** Vastgezet: verschijnt bovenaan de publieke lijst. */
   pinned?: boolean;
+  /** Eigen links: favicon van de website (standaard) of een universele wereldbol. */
+  iconMode?: "favicon" | "globe";
 }
 
 /**

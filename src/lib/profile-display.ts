@@ -1,3 +1,4 @@
+import { stripBioLinks } from "@/lib/bio-rules";
 /**
  * Weergavevoorkeuren van een publiek ROUT-profiel.
  *
@@ -452,9 +453,9 @@ export function parseDisplayPrefs(raw: unknown): ProfileDisplayPrefs {
     metaDescription: textOrNull(r["metaDescription"], 200),
     ogImageUrl: urlOrNull(r["ogImageUrl"]),
     accentColor: colorOrNull(r["accentColor"]),
-    bioNl: textOrNull(r["bioNl"], 500),
-    bioEn: textOrNull(r["bioEn"], 500),
-    bioFr: textOrNull(r["bioFr"], 500),
+    bioNl: stripBioLinks(textOrNull(r["bioNl"], 500)),
+    bioEn: stripBioLinks(textOrNull(r["bioEn"], 500)),
+    bioFr: stripBioLinks(textOrNull(r["bioFr"], 500)),
     showVcardButton: Boolean(r["showVcardButton"]),
     vcardLabel: textOrNull(r["vcardLabel"], 40),
     vcardIncludeAvatar: r["vcardIncludeAvatar"] === undefined ? true : Boolean(r["vcardIncludeAvatar"]),
@@ -769,7 +770,7 @@ export function availableBioLocales(prefs: ProfileDisplayPrefs): BioLocale[] {
 }
 
 /**
- * Bio in de gevraagde taal, met auto-detect: gevraagde taal → NL → eerste
+ * Bio in de gevraagde taal, met auto-detect: gevraagde taal → EN → eerste
  * ingevulde vertaling → de klassieke `profiles.bio`.
  */
 export function bioForLocale(
@@ -779,6 +780,7 @@ export function bioForLocale(
 ): string | null {
   const wanted = (BIO_LOCALES as readonly string[]).includes(locale) ? (locale as BioLocale) : null;
   if (wanted && prefs[BIO_KEY[wanted]]) return prefs[BIO_KEY[wanted]];
+  if (prefs.bioEn) return prefs.bioEn;
   const first = availableBioLocales(prefs)[0];
   if (first) return prefs[BIO_KEY[first]];
   return fallback?.trim() || null;

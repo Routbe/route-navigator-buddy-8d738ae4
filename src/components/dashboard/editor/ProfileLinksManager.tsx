@@ -218,6 +218,7 @@ export function ProfileLinksManager({
                 >
                   <SocialPlatformIcon
                     source={b.value?.trim() || b.kind}
+                    iconMode={b.iconMode}
                     className="h-4 w-4 text-current"
                   />
                 </span>
@@ -444,6 +445,30 @@ export function ProfileLinksManager({
                       >
                         <ImagePlus className="h-3.5 w-3.5" /> Eigen miniatuur
                       </button>
+                      <div
+                        role="radiogroup"
+                        aria-label="Icoon voor deze link"
+                        className="inline-flex overflow-hidden rounded-lg border border-border text-[11px]"
+                      >
+                        {(["favicon", "globe"] as const).map((mode) => {
+                          const active = (b.iconMode ?? "favicon") === mode;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              onClick={() => patch(b.id, { iconMode: mode })}
+                              className={cn(
+                                "px-2 py-1 transition-colors",
+                                active ? "bg-foreground text-background" : "hover:bg-muted",
+                              )}
+                            >
+                              {mode === "favicon" ? "Websitelogo" : "Wereldbol"}
+                            </button>
+                          );
+                        })}
+                      </div>
                       {b.thumbnailUrl && (
                         <button
                           type="button"

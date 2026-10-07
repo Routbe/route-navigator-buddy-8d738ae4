@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from "react";
+import { useState, type ComponentType, type SVGProps } from "react";
 import {
   Calendar,
   Coffee,
@@ -170,6 +170,11 @@ export function getSocialPlatformIcon(urlOrName: string): PlatformIcon {
   const raw = (urlOrName ?? "").trim();
   if (!raw) return LinkIcon;
 
+  // E-mail en telefoon eerst: een adres op mastodon.social of bsky.social is
+  // nog altijd een e-mailadres en krijgt altijd een envelop.
+  if (isEmailLike(raw)) return Mail;
+  if (/^(tel|sms):/i.test(raw)) return Phone;
+
   // 0 — Harde merkkaart eerst: een bekend platform krijgt altijd zijn eigen
   // officiële vector, nooit een generiek icoon.
   const brand = lookupBrandIcon(raw);
@@ -207,6 +212,26 @@ export function getSocialPlatformIcon(urlOrName: string): PlatformIcon {
     : LinkIcon;
 }
 
+/** `mailto:` of een kaal adres (zonder leidende @, die is voor Fediverse-handles). */
+export function isEmailLike(raw: string): boolean {
+  const v = raw.trim();
+  if (/^mailto:/i.test(v)) return true;
+  return /^[^@\s/:]+@[^@\s/]+\.[a-z]{2,}$/i.test(v);
+}
+
+/** Hostnaam van een gewone webadres-link, of null. */
+function websiteHost(raw: string): string | null {
+  if (!/^https?:\/\//i.test(raw) && !/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(raw)) return null;
+  try {
+    const url = new URL(/^https?:/i.test(raw) ? raw : `https://${raw}`);
+    return url.hostname.toLowerCase().replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
+export type LinkIconMode = "favicon" | "globe";
+
 /**
  * Merkicoon-renderer. Bekende platformen renderen in hun officiële merkkleur;
  * onbekende bronnen blijven neutraal en volgen het thema.
@@ -215,14 +240,32 @@ export function SocialPlatformIcon({
   source,
   className,
   monochrome = false,
+  iconMode = "favicon",
 }: {
   source: string;
   className?: string;
   /** Forceert themakleur in plaats van de merkkleur. */
   monochrome?: boolean;
+  /** Eigen links: favicon van de site (standaard) of altijd de wereldbol. */
+  iconMode?: LinkIconMode;
 }) {
+  const [faviconFailed, setFaviconFailed] = useState(false);
   const Icon = getSocialPlatformIcon(source);
-  const brand = monochrome ? null : lookupBrandIcon(source);
+  const brand = monochrome || isEmailLike(source) ? null : lookupBrandIcon(source);
+  const host = Icon === Globe && iconMode !== "globe" ? websiteHost(source) : null;
+  if (host && !faviconFailed) {
+    return (
+      <img
+        src={`/api/public/brand-logo?domain=${encodeURIComponent(host)}`}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFaviconFailed(true)}
+        className={cn("h-5 w-5 shrink-0 rounded-sm object-contain", className)}
+      />
+    );
+  }
   return (
     <Icon
       className={cn("h-5 w-5 shrink-0", brand ? "" : "text-foreground", className)}

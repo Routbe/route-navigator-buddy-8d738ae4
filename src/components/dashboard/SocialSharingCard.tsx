@@ -1,3 +1,4 @@
+import { BIO_LINK_MESSAGE, bioContainsLink } from "@/lib/bio-rules";
 import { useState } from "react";
 import { ExternalLink, Share2 } from "lucide-react";
 import { InfoHint } from "@/components/InfoHint";
@@ -159,7 +160,13 @@ export function SocialSharingCard({
           placeholder={`Bio in het ${BIO_LOCALE_LABEL[bioTab]} — leeg = val terug op je standaard bio.`}
           onChange={(e) => setPref(bioKey, e.target.value || null)}
           className="input-field rounded-xl"
+          aria-invalid={bioContainsLink(prefs[bioKey])}
         />
+        {bioContainsLink(prefs[bioKey]) && (
+          <p role="alert" className="text-xs text-destructive">
+            {BIO_LINK_MESSAGE}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">
           Bezoekers krijgen automatisch hun eigen taal en kunnen wisselen met de taalpil op je
           profiel.

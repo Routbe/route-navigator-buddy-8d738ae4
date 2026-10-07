@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { InfomaniakMark } from "@/components/InfomaniakMark";
 import { Link, useNavigate } from "@/lib/router-compat";
 import { toast } from "sonner";
 import { ArrowLeft, KeyRound, Loader2, Mail, MailCheck, ShieldCheck } from "lucide-react";
@@ -90,8 +91,8 @@ const TILES: { id: string; label: string; provider: string; mark: string; color:
     id: "infomaniak",
     label: "Infomaniak",
     provider: "infomaniak",
-    // Minimalistisch wolk-symbool in Infomaniak-blauw.
-    mark: "M6.5 19a4.5 4.5 0 0 1-.42-8.98A6 6 0 0 1 17.7 8.6 5 5 0 0 1 17.5 19h-11Z",
+    // Wordt gerenderd door <InfomaniakMark /> (witte k op blauw).
+    mark: "",
     color: "#0098FF",
   },
 ];
@@ -362,6 +363,8 @@ export default function AuthNeon({ initialMode = "magic" }: { initialMode?: Mode
               >
                 {tile.id === "google" ? (
                   <GoogleColorMark className="h-[18px] w-[18px] shrink-0" />
+                ) : tile.id === "infomaniak" ? (
+                  <InfomaniakMark className="h-[18px] w-[18px] shrink-0" />
                 ) : (
                   <svg
                     className="h-[18px] w-[18px] shrink-0"

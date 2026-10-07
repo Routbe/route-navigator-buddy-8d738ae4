@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { BirthdateDialog } from "@/components/BirthdateDialog";
 import { toast } from "sonner";
 import { Building2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ export function BusinessInfluencerRequests() {
   const [busy, setBusy] = useState(false);
   const [openBusiness, setOpenBusiness] = useState(false);
   const [openInfluencer, setOpenInfluencer] = useState(false);
+  const [birthdateRetry, setBirthdateRetry] = useState<null | (() => void)>(null);
 
   useEffect(() => {
     void loadBusiness().then((r) => setBusiness(r as Row));
@@ -71,6 +73,14 @@ export function BusinessInfluencerRequests() {
           contactName: String(form.get("contactName") ?? "") || null,
         },
       });
+      if (!result.ok && result.reason === "birthdate_required") {
+        setBirthdateRetry(() => () => void onBusiness(form));
+        return;
+      }
+      if (!result.ok && result.reason === "birthdate_required") {
+        setBirthdateRetry(() => () => void onInfluencer(form));
+        return;
+      }
       if (!result.ok) {
         toast.error(result.reason ?? "Aanvraag mislukt.");
         return;
@@ -133,6 +143,15 @@ export function BusinessInfluencerRequests() {
   return (
     <>
     <ClaimApprovedHandle />
+    <BirthdateDialog
+      open={birthdateRetry !== null}
+      onOpenChange={(o) => !o && setBirthdateRetry(null)}
+      onSaved={() => {
+        const retry = birthdateRetry;
+        setBirthdateRetry(null);
+        retry?.();
+      }}
+    />
     <div className="mt-6 flex flex-wrap items-center gap-3 border-t pt-4">
       <Dialog open={openBusiness} onOpenChange={setOpenBusiness}>
         <DialogTrigger asChild>
