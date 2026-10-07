@@ -39,3 +39,14 @@
 - [x] Architectuurdocument identity broker (docs/identity-broker-architecture.md).
 - [x] Migratie 43 uitgevoerd op Neon.
 - [ ] Dezelfde sleutels in Vercel zetten (+ NITRO_PRESET=vercel) en redeployen (wacht op jou).
+
+## Pers-kit, Fediverse-e-mailcode, Studio (okt 2026)
+- [x] /press: logo's (SVG/PNG), kleuren, standaardtekst, perscontact; link in footer.
+- [x] Bluesky/Mastodon: e-mailadres + 6-cijferige code vóór aanmaken/koppelen (max 3 pogingen, 15 min slot).
+- [x] Infomaniak-logo (witte k op blauw).
+- [x] Iconen: e-mail = envelop; eigen links = websitelogo of wereldbol; vCard met ingebedde foto.
+- [x] Profielteksten NL/EN/FR met Engels als standaard; geen links in bio's.
+- [x] Geboortedatum-pop-up vóór verificatieaanvragen.
+- [ ] db/46 en db/48 op Neon uitvoeren (wacht op DATABASE_URL; de app maakt de tabellen ook zelf aan).
+- [ ] Google-geboortedatum (scope user.birthday.read) — wacht op jouw akkoord + Google-review.
+- [ ] Geboortedatumcontrole ook vóór andere betaalde acties.
