@@ -89,14 +89,9 @@ export function ProfileMenu() {
     // On the auth portal itself the header CTAs are redundant noise.
     if (pathname.startsWith("/auth") || pathname.startsWith("/login")) return null;
     return (
-      <div className="flex items-center gap-1.5">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/auth/sign-in">Sign in</Link>
-        </Button>
-        <Button asChild size="sm" className="hidden sm:inline-flex">
-          <Link to="/auth/sign-up">Sign up</Link>
-        </Button>
-      </div>
+      <Button asChild size="sm">
+        <Link to="/auth/sign-in">Sign in</Link>
+      </Button>
     );
   }
 
