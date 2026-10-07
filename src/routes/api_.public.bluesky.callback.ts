@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const STATE_COOKIE = "rout_bsky_state";
-const PENDING_COOKIE = "rout_bsky_pending";
+const PENDING_COOKIE = "rout_fedi_pending";
 
 function redirectTo(location: string, cookies: string[] = []) {
   const headers = new Headers({ location });
@@ -69,7 +69,10 @@ export const Route = createFileRoute("/api_/public/bluesky/callback")({
             ]);
           }
 
-          const pending = await signValue(`${result.did}|${result.handle}|${result.next}`);
+          const { encodePending } = await import("@/lib/fediverse-otp.server");
+          const pending = await signValue(
+            encodePending({ provider: "bluesky", accountId: result.did, handle: result.handle, next: result.next }),
+          );
           return redirectTo("/auth/bluesky", [
             clear,
             `${PENDING_COOKIE}=${encodeURIComponent(pending)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900`,

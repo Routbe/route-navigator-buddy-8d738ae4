@@ -67,6 +67,7 @@ import {
 } from "@/lib/visit-effects";
 import { AvatarFrameWrapper } from "@/components/profile/AvatarFrameWrapper";
 import { downloadVCard } from "@/lib/vcard";
+import { profileText } from "@/lib/profile-i18n";
 
 import { useI18n } from "@/lib/i18n";
 import { initialsFrom } from "@/components/UserAvatar";
@@ -187,7 +188,7 @@ export function ProfileView({
             href={link.url}
             target="_blank"
             rel="me noopener noreferrer"
-            title={`${PLATFORM_LABEL[link.platform]} — geverifieerd`}
+            title={`${PLATFORM_LABEL[link.platform]} — ${profileText(locale, "verified")}`}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium transition-opacity hover:opacity-80"
             style={{ border: `1px solid ${t.border}`, color: t.muted }}
           >
@@ -467,7 +468,7 @@ export function ProfileView({
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden />
             </span>
-            {prefs.vcardLabel?.trim() || "Contact opslaan"}
+            {prefs.vcardLabel?.trim() || profileText(locale, "saveContact")}
           </button>
         )}
 
@@ -577,6 +578,7 @@ export function ProfileView({
                 ) : (
                   <SocialPlatformIcon
                     source={blockHref(b) || b.kind}
+                    iconMode={b.iconMode}
                     className="h-4 w-4 text-current"
                   />
                 )}

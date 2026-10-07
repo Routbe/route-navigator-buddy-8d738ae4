@@ -1,70 +1,89 @@
 import { createServerFn } from "@tanstack/react-start";
 
 /**
- * Laatste stap van de Bluesky-login: het geverifieerde Bluesky-account aan een
- * e-mailadres hangen. Zonder e-mailadres maken we geen ROUT-account aan.
+ * Laatste stap van de Bluesky- en Mastodon-login wanneer de provider geen
+ * geverifieerd e-mailadres meestuurt:
+ *   1. lid vult e-mailadres in → server mailt een 6-cijferige code;
+ *   2. pas na de juiste code wordt het account aangemaakt of gekoppeld.
+ * Zo kan niemand een Fediverse-account aan andermans e-mailadres hangen.
  */
 
-const PENDING_COOKIE = "rout_bsky_pending";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Toont welk Bluesky-account op een e-mailadres wacht. */
-export const getPendingBlueskyLogin = createServerFn({ method: "GET" }).handler(async () => {
+async function readPending() {
   const { getRequestHeader } = await import("@tanstack/react-start/server");
   const { readCookie, readSignedValue } = await import("@/lib/app-session.server");
-  const raw = readCookie(getRequestHeader("cookie") ?? "", PENDING_COOKIE);
-  const payload = await readSignedValue(raw);
-  if (!payload) return { handle: null as string | null };
-  const [, handle] = payload.split("|");
-  return { handle: handle ?? null };
+  const { FEDI_PENDING_COOKIE, decodePending } = await import("@/lib/fediverse-otp.server");
+  const raw = await readSignedValue(readCookie(getRequestHeader("cookie") ?? "", FEDI_PENDING_COOKIE));
+  return { raw, pending: decodePending(raw) };
+}
+
+/** Toont welk Fediverse-account op een e-mailadres wacht. */
+export const getPendingBlueskyLogin = createServerFn({ method: "GET" }).handler(async () => {
+  const { pending } = await readPending();
+  return { handle: pending?.handle ?? null, provider: pending?.provider ?? null };
 });
 
-export const finishBlueskyLogin = createServerFn({ method: "POST" })
+export const requestFediverseEmailCode = createServerFn({ method: "POST" })
   .inputValidator((input: { email: string }) => {
-    const email = (input?.email ?? "").trim().toLowerCase();
-    if (!EMAIL_REGEX.test(email)) throw new Error("Vul een geldig e-mailadres in.");
+    const email = String(input?.email ?? "").trim().toLowerCase();
+    if (email.length > 254 || !EMAIL_REGEX.test(email)) throw new Error("Vul een geldig e-mailadres in.");
     return { email };
   })
   .handler(async ({ data }) => {
-    const { getRequestHeader, setCookie } = await import("@tanstack/react-start/server");
-    const { readCookie, readSignedValue, createAppSessionValue, APP_SESSION_COOKIE, APP_SESSION_COOKIE_OPTIONS } =
-      await import("@/lib/app-session.server");
+    const { raw, pending } = await readPending();
+    if (!raw || !pending) throw new Error("Deze aanmelding is verlopen. Begin opnieuw.");
+    const { enforceRateLimit } = await import("@/lib/rate-limit.server");
+    enforceRateLimit(`fedi-otp-send:${pending.provider}:${pending.accountId}`, 5, 15 * 60 * 1000);
+    const { issueCode } = await import("@/lib/fediverse-otp.server");
+    await issueCode(raw, data.email);
+    return { ok: true as const };
+  });
 
-    const raw = readCookie(getRequestHeader("cookie") ?? "", PENDING_COOKIE);
-    const payload = await readSignedValue(raw);
-    if (!payload) throw new Error("Deze aanmelding is verlopen. Begin opnieuw bij Bluesky.");
-    const [did, handle, next] = payload.split("|") as [string, string, string | undefined];
-
-    const { findUserByEmail, createUser, updateUserMetadata } = await import(
-      "@/lib/auth/users.server"
+export const finishBlueskyLogin = createServerFn({ method: "POST" })
+  .inputValidator((input: { code: string }) => {
+    const code = String(input?.code ?? "").replace(/\D/g, "");
+    if (code.length !== 6) throw new Error("De code bestaat uit 6 cijfers.");
+    return { code };
+  })
+  .handler(async ({ data }) => {
+    const { setCookie } = await import("@tanstack/react-start/server");
+    const { createAppSessionValue, APP_SESSION_COOKIE, APP_SESSION_COOKIE_OPTIONS } = await import(
+      "@/lib/app-session.server"
     );
-    const existing = await findUserByEmail(data.email);
-    const metadata = {
-      provider_kind: "bluesky",
-      bluesky_did: did,
-      bluesky_handle: handle,
-      full_name: handle,
-    };
+    const { FEDI_PENDING_COOKIE, verifyCode } = await import("@/lib/fediverse-otp.server");
 
+    const { raw, pending } = await readPending();
+    if (!raw || !pending) throw new Error("Deze aanmelding is verlopen. Begin opnieuw.");
+
+    // Gooit bij een foute, verlopen of geblokkeerde code — niets wordt gekoppeld.
+    const email = await verifyCode(raw, data.code);
+
+    const { findUserByEmail, createUser, updateUserMetadata } = await import("@/lib/auth/users.server");
+    const metadata =
+      pending.provider === "bluesky"
+        ? { provider_kind: "bluesky", bluesky_did: pending.accountId, bluesky_handle: pending.handle }
+        : { provider_kind: "mastodon", fediverse_handle: pending.handle };
+
+    const existing = await findUserByEmail(email);
     const userId = existing
       ? String(existing["id"])
-      : (await createUser({ email: data.email, metadata, emailConfirmed: false })).id;
+      : (await createUser({ email, metadata: { ...metadata, full_name: pending.handle }, emailConfirmed: true })).id;
     if (existing) await updateUserMetadata(userId, metadata);
 
     const { linkIdentity } = await import("@/lib/identities.server");
     await linkIdentity({
       userId,
-      provider: "bluesky",
-      providerAccountId: did,
-      email: data.email,
-      displayName: handle,
+      provider: pending.provider,
+      providerAccountId: pending.accountId,
+      email,
+      displayName: pending.handle,
     });
 
     const { sql } = await import("@/lib/neon");
     await sql`update public.users set last_sign_in_at = now() where id = ${userId}`;
 
     setCookie(APP_SESSION_COOKIE, await createAppSessionValue(userId), APP_SESSION_COOKIE_OPTIONS as never);
-    setCookie(PENDING_COOKIE, "", { path: "/", maxAge: 0 } as never);
-
-    return { ok: true as const, next: next && next.startsWith("/") ? next : "/dashboard" };
+    setCookie(FEDI_PENDING_COOKIE, "", { path: "/", maxAge: 0 } as never);
+    return { ok: true as const, next: pending.next };
   });

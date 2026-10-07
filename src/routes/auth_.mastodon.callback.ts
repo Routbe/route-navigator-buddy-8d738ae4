@@ -28,6 +28,20 @@ export const Route = createFileRoute("/auth_/mastodon/callback")({
           const { completeMastodonCallback } = await import("@/lib/mastodon-auth.server");
           const { createAppSessionValue } = await import("@/lib/app-session.server");
           const result = await completeMastodonCallback({ code, state });
+          if (!result.userId) {
+            const { signValue } = await import("@/lib/app-session.server");
+            const { encodePending, FEDI_PENDING_COOKIE } = await import("@/lib/fediverse-otp.server");
+            const pending = await signValue(
+              encodePending({ provider: "mastodon", accountId: result.handle, handle: result.handle, next: result.next }),
+            );
+            return new Response(null, {
+              status: 302,
+              headers: {
+                location: "/auth/bluesky",
+                "set-cookie": `${FEDI_PENDING_COOKIE}=${encodeURIComponent(pending)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900`,
+              },
+            });
+          }
           const session = await createAppSessionValue(result.userId);
           return new Response(null, {
             status: 302,
